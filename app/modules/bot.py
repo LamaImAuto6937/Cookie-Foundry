@@ -39,7 +39,55 @@ class CookieFoundry:
     def get_cookies(self):
         result = self.game_tab.call_method("Runtime.evaluate", expression="Game.cookies")
         return result["result"]["value"]
+
+    def get_cookies_production(self):
+        result = self.game_tab.call_method("Runtime.evaluate", expression="Game.cookiesPs")
+        return result["result"]["value"]
+
+    def get_wrinklers(self):
+        result = self.game_tab.call_method(
+            "Runtime.evaluate",
+            expression="""
+            JSON.stringify(
+                Game.wrinklers
+                    .filter(w => w.phase === 2)
+                    .map(w => ({id: w.id, health: w.hp, age: w.age, type: w.type}))
+            )
+            """
+        )
+        if "exceptionDetails" in result:
+            print("JS-Error:", result["exceptionDetails"])
+            return []
+        return json.loads(result["result"]["value"])
+
+    def click_wrinkler_by_id(self, wrinkler_id):
+        expression = f"""
+        (function() {{
+            var w = Game.wrinklers.find(function(wr) {{ return wr.id === {wrinkler_id}; }});
+            if (w) {{ w.hp = 0; return true; }}
+            return false;
+        }})()
+        """
+        result = self.game_tab.call_method("Runtime.evaluate", expression=expression)
+        return result.get("result", {}).get("value", False)
     
+    def wrinkler_watcher(self, max_wrinklers, stop_event):
+        while not stop_event.is_set():
+            wrinklers = self.get_wrinklers()
+            if len(wrinklers) >= max_wrinklers:
+                for wrinkler in wrinklers:
+                    while not stop_event.is_set():
+                        current_wrinklers = self.get_wrinklers()
+                        current_wrinkler = next(
+                            (w for w in current_wrinklers if w.get("id") == wrinkler["id"]),
+                            None,
+                        )
+                        if not current_wrinkler or current_wrinkler.get("health", 0) <= 0:
+                            break
+                        self.click_wrinkler_by_id(wrinkler["id"])
+                        time.sleep(0.1)
+
+
     def get_shimmers(self):
         # Golden Cookies are called shimmers ingame
         result = self.game_tab.call_method(

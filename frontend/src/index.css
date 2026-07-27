@@ -40,6 +40,7 @@
   --text-body-md: 16px;
   --text-display-lg: 48px;
   --text-display-lg-mobile: 32px;
+  --color-accent: #F9BA82;
 }
 
 @keyframes soft-pulse {
@@ -123,7 +124,6 @@ body {
 }
 
 #root {
-  width: 1126px;
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
